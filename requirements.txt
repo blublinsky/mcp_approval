@@ -1,0 +1,23 @@
+# HTTP client (required for MCP communication)
+httpx>=0.25.0
+
+# Data validation (required)
+pydantic>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# LangChain for LLM functionality (required for approval_client.py)
+langchain>=1.0
+langchain-openai>=1.0
+langgraph>=0.2.0
+
+# MCP adapter integration (required for approval_client.py)
+langchain-mcp-adapters>=0.2.1
+mcp>=1.9.2
+
+# Development tools (optional)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+ruff>=0.1.0

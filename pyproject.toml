@@ -1,0 +1,50 @@
+[project]
+name = "mcp-approval"
+version = "0.1.0"
+description = "MCP approval workflow demonstration with human-in-the-loop"
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+dependencies = [
+    "httpx>=0.25.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+langchain = [
+    "langchain>=1.0",
+    "langchain-openai>=1.0",
+]
+mcp = [
+    "langchain-mcp-adapters>=0.2.1",
+    "mcp>=1.9.2",
+]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+all = [
+    "mcp-approval[langchain,mcp,dev]",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["mcp_server", "approval_client", "run_demo", "test_server"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = []
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
