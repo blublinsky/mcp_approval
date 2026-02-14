@@ -79,6 +79,7 @@
 
 ## High-Level Description
 
+
 ### Problem Statement
 When an MCP server needs to execute a dangerous tool (e.g., delete_file, send_email), it must obtain human approval before proceeding.
 
