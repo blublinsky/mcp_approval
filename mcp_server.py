@@ -19,7 +19,6 @@ import json
 import sys
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any
 
 # Global storage
 request_log: list = []
@@ -28,10 +27,177 @@ request_log: list = []
 class ApprovalMCPHandler(BaseHTTPRequestHandler):
     """HTTP request handler for approval-demo MCP server."""
 
-    def log_message(self, fmt: str, *args: Any) -> None:
+    def log_message(self, fmt: str, *args: object) -> None:
         """Log requests with timestamp."""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{timestamp}] {fmt % args}")
+
+    def _handle_initialize(self, request_id: int) -> dict:
+        """Handle MCP initialize request."""
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {}},
+                "serverInfo": {
+                    "name": "approval-demo-mcp-server",
+                    "version": "1.0.0",
+                },
+            },
+        }
+
+    def _handle_tools_list(self, request_id: int) -> dict:
+        """Handle MCP tools/list request - return mix of safe and dangerous tools."""
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "result": {
+                "tools": [
+                    # Safe tools
+                    {
+                        "name": "list_users",
+                        "description": "List all users in the system",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {},
+                        },
+                    },
+                    {
+                        "name": "get_file",
+                        "description": "Retrieve the content of a file",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "path": {
+                                    "type": "string",
+                                    "description": "Path to the file",
+                                }
+                            },
+                            "required": ["path"],
+                        },
+                    },
+                    {
+                        "name": "search_logs",
+                        "description": "Search through system logs",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": "Search query",
+                                }
+                            },
+                            "required": ["query"],
+                        },
+                    },
+                    # Dangerous tools (require approval)
+                    {
+                        "name": "delete_file",
+                        "description": (
+                            "Delete a file from the filesystem "
+                            "(destructive operation)"
+                        ),
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "path": {
+                                    "type": "string",
+                                    "description": "Path to the file to delete",
+                                }
+                            },
+                            "required": ["path"],
+                        },
+                    },
+                    {
+                        "name": "send_email",
+                        "description": (
+                            "Send an email to recipients " "(external communication)"
+                        ),
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "to": {
+                                    "type": "string",
+                                    "description": "Recipient email address",
+                                },
+                                "subject": {
+                                    "type": "string",
+                                    "description": "Email subject",
+                                },
+                                "body": {
+                                    "type": "string",
+                                    "description": "Email body",
+                                },
+                            },
+                            "required": ["to", "subject", "body"],
+                        },
+                    },
+                    {
+                        "name": "execute_command",
+                        "description": (
+                            "Execute a system command " "(potentially dangerous)"
+                        ),
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "command": {
+                                    "type": "string",
+                                    "description": "Command to execute",
+                                }
+                            },
+                            "required": ["command"],
+                        },
+                    },
+                    {
+                        "name": "modify_database",
+                        "description": (
+                            "Modify database records " "(destructive operation)"
+                        ),
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "table": {
+                                    "type": "string",
+                                    "description": "Table name",
+                                },
+                                "query": {
+                                    "type": "string",
+                                    "description": "SQL query to execute",
+                                },
+                            },
+                            "required": ["table", "query"],
+                        },
+                    },
+                ]
+            },
+        }
+
+    def _handle_tools_call(self, request_id: int, request_data: dict) -> dict:
+        """Handle MCP tools/call request - execute a tool."""
+        params = request_data.get("params", {})
+        tool_name = params.get("name", "unknown")
+        arguments = params.get("arguments", {})
+
+        # Simulate tool execution
+        result_text = self._execute_tool(tool_name, arguments)
+
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "result": {
+                "content": [{"type": "text", "text": result_text}],
+                "isError": False,
+            },
+        }
+
+    def _handle_unknown_method(self, request_id: int) -> dict:
+        """Handle unknown MCP method."""
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "result": {"status": "ok"},
+        }
 
     def do_POST(self) -> None:
         """Handle POST requests (MCP protocol endpoints)."""
@@ -60,174 +226,15 @@ class ApprovalMCPHandler(BaseHTTPRequestHandler):
             request_log.pop(0)
 
         # Handle MCP protocol methods
-        response: dict = {}
-
-        if method == "initialize":
-            response = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {"tools": {}},
-                    "serverInfo": {
-                        "name": "approval-demo-mcp-server",
-                        "version": "1.0.0",
-                    },
-                },
-            }
-
-        elif method == "tools/list":
-            # Return mix of safe and dangerous tools
-            response = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "tools": [
-                        # Safe tools
-                        {
-                            "name": "list_users",
-                            "description": "List all users in the system",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {},
-                            },
-                        },
-                        {
-                            "name": "get_file",
-                            "description": "Retrieve the content of a file",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "path": {
-                                        "type": "string",
-                                        "description": "Path to the file",
-                                    }
-                                },
-                                "required": ["path"],
-                            },
-                        },
-                        {
-                            "name": "search_logs",
-                            "description": "Search through system logs",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "query": {
-                                        "type": "string",
-                                        "description": "Search query",
-                                    }
-                                },
-                                "required": ["query"],
-                            },
-                        },
-                        # Dangerous tools (require approval)
-                        {
-                            "name": "delete_file",
-                            "description": (
-                                "Delete a file from the filesystem "
-                                "(destructive operation)"
-                            ),
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "path": {
-                                        "type": "string",
-                                        "description": "Path to the file to delete",
-                                    }
-                                },
-                                "required": ["path"],
-                            },
-                        },
-                        {
-                            "name": "send_email",
-                            "description": (
-                                "Send an email to recipients "
-                                "(external communication)"
-                            ),
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "to": {
-                                        "type": "string",
-                                        "description": "Recipient email address",
-                                    },
-                                    "subject": {
-                                        "type": "string",
-                                        "description": "Email subject",
-                                    },
-                                    "body": {
-                                        "type": "string",
-                                        "description": "Email body",
-                                    },
-                                },
-                                "required": ["to", "subject", "body"],
-                            },
-                        },
-                        {
-                            "name": "execute_command",
-                            "description": (
-                                "Execute a system command " "(potentially dangerous)"
-                            ),
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "command": {
-                                        "type": "string",
-                                        "description": "Command to execute",
-                                    }
-                                },
-                                "required": ["command"],
-                            },
-                        },
-                        {
-                            "name": "modify_database",
-                            "description": (
-                                "Modify database records " "(destructive operation)"
-                            ),
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "table": {
-                                        "type": "string",
-                                        "description": "Table name",
-                                    },
-                                    "query": {
-                                        "type": "string",
-                                        "description": "SQL query to execute",
-                                    },
-                                },
-                                "required": ["table", "query"],
-                            },
-                        },
-                    ]
-                },
-            }
-
-        elif method == "tools/call":
-            # Handle tool execution
-            params = request_data.get("params", {})
-            tool_name = params.get("name", "unknown")
-            arguments = params.get("arguments", {})
-
-            # Simulate tool execution
-            result_text = self._execute_tool(tool_name, arguments)
-
-            response = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "content": [{"type": "text", "text": result_text}],
-                    "isError": False,
-                },
-            }
-
-        else:
-            # Generic response for unknown methods
-            response = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {"status": "ok"},
-            }
+        match method:
+            case "initialize":
+                response = self._handle_initialize(request_id)
+            case "tools/list":
+                response = self._handle_tools_list(request_id)
+            case "tools/call":
+                response = self._handle_tools_call(request_id, request_data)
+            case _:
+                response = self._handle_unknown_method(request_id)
 
         # Send response
         self.send_response(200)
@@ -237,74 +244,77 @@ class ApprovalMCPHandler(BaseHTTPRequestHandler):
 
     def _execute_tool(self, tool_name: str, arguments: dict) -> str:
         """Simulate tool execution and return mock results."""
-        if tool_name == "list_users":
-            return json.dumps(
-                [
-                    {"id": 1, "name": "Alice", "email": "alice@example.com"},
-                    {"id": 2, "name": "Bob", "email": "bob@example.com"},
-                    {"id": 3, "name": "Charlie", "email": "charlie@example.com"},
-                ]
-            )
+        match tool_name:
+            case "list_users":
+                return json.dumps(
+                    [
+                        {"id": 1, "name": "Alice", "email": "alice@example.com"},
+                        {"id": 2, "name": "Bob", "email": "bob@example.com"},
+                        {"id": 3, "name": "Charlie", "email": "charlie@example.com"},
+                    ]
+                )
 
-        elif tool_name == "get_file":
-            path = arguments.get("path", "unknown")
-            content = (
-                f"Content of file '{path}':\n\n"
-                "This is mock file content.\nLine 2\nLine 3"
-            )
-            return content
+            case "get_file":
+                path = arguments.get("path", "unknown")
+                content = (
+                    f"Content of file '{path}':\n\n"
+                    "This is mock file content.\nLine 2\nLine 3"
+                )
+                return content
 
-        elif tool_name == "search_logs":
-            query = arguments.get("query", "")
-            return json.dumps(
-                [
-                    {
-                        "timestamp": "2026-02-02T10:30:00",
-                        "level": "INFO",
-                        "message": f"Log entry matching '{query}'",
-                    },
-                    {
-                        "timestamp": "2026-02-02T10:31:00",
-                        "level": "WARN",
-                        "message": f"Another log with '{query}'",
-                    },
-                ]
-            )
+            case "search_logs":
+                query = arguments.get("query", "")
+                return json.dumps(
+                    [
+                        {
+                            "timestamp": "2026-02-02T10:30:00",
+                            "level": "INFO",
+                            "message": f"Log entry matching '{query}'",
+                        },
+                        {
+                            "timestamp": "2026-02-02T10:31:00",
+                            "level": "WARN",
+                            "message": f"Another log with '{query}'",
+                        },
+                    ]
+                )
 
-        elif tool_name == "delete_file":
-            path = arguments.get("path", "unknown")
-            return f"✓ File '{path}' has been deleted successfully"
+            case "delete_file":
+                path = arguments.get("path", "unknown")
+                return f"✓ File '{path}' has been deleted successfully"
 
-        elif tool_name == "send_email":
-            to = arguments.get("to", "unknown")
-            subject = arguments.get("subject", "")
-            return f"✓ Email sent to '{to}' with subject '{subject}'"
+            case "send_email":
+                to = arguments.get("to", "unknown")
+                subject = arguments.get("subject", "")
+                return f"✓ Email sent to '{to}' with subject '{subject}'"
 
-        elif tool_name == "execute_command":
-            command = arguments.get("command", "unknown")
-            return f"✓ Command executed: {command}\nOutput: Mock command output"
+            case "execute_command":
+                command = arguments.get("command", "unknown")
+                return f"✓ Command executed: {command}\nOutput: Mock command output"
 
-        elif tool_name == "modify_database":
-            table = arguments.get("table", "unknown")
-            query = arguments.get("query", "")
-            return f"✓ Database modified: {query} on table '{table}'"
+            case "modify_database":
+                table = arguments.get("table", "unknown")
+                query = arguments.get("query", "")
+                return f"✓ Database modified: {query} on table '{table}'"
 
-        else:
-            return (
-                f"Tool '{tool_name}' executed with arguments: {json.dumps(arguments)}"
-            )
+            case _:
+                return (
+                    f"Tool '{tool_name}' executed with arguments: "
+                    f"{json.dumps(arguments)}"
+                )
 
     def do_GET(self) -> None:
         """Handle GET requests (debug endpoints)."""
-        if self.path == "/debug/requests":
-            self._send_json_response(request_log)
-        elif self.path == "/health":
-            self._send_json_response({"status": "healthy", "tools": 7})
-        elif self.path == "/":
-            self._send_help_page()
-        else:
-            self.send_response(404)
-            self.end_headers()
+        match self.path:
+            case "/debug/requests":
+                self._send_json_response(request_log)
+            case "/health":
+                self._send_json_response({"status": "healthy", "tools": 7})
+            case "/":
+                self._send_help_page()
+            case _:
+                self.send_response(404)
+                self.end_headers()
 
     def _send_json_response(self, data: dict | list) -> None:
         """Send a JSON response."""

@@ -7,7 +7,7 @@ and streaming, similar to the OLS implementation, with integrated approval syste
 
 import asyncio
 import logging
-from typing import Any, AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langchain_core.messages.ai import AIMessageChunk
@@ -42,7 +42,7 @@ class StreamedChunk:
     """Represents a chunk of streamed response."""
 
     def __init__(
-        self, chunk_type: str, text: str = "", data: dict[str, Any] | None = None
+        self, chunk_type: str, text: str = "", data: dict[str, object] | None = None
     ):
         self.type = chunk_type
         self.text = text
@@ -51,7 +51,7 @@ class StreamedChunk:
 
 def tool_calls_from_tool_calls_chunks(
     tool_calls_chunks: list[AIMessageChunk],
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Extract complete tool calls from a series of tool call chunks.
 
     Args:
@@ -90,7 +90,7 @@ async def get_mcp_tools(mcp_url: str) -> list:
 
 
 async def execute_tool_calls(
-    tool_calls: list[dict[str, Any]],
+    tool_calls: list[dict[str, object]],
     all_tools: list,
     approval: Optional[BaseApproval] = None,
 ) -> list[BaseMessage]:
@@ -118,11 +118,11 @@ async def execute_tool_calls(
         # Check approval if approval system is enabled
         if approval:
             tool = tools_by_name.get(tool_name)
-            tool_request: ToolRequest = {
-                "name": tool_name,
-                "description": tool.description if tool else "",
-                "args": tool_args,
-            }
+            tool_request = ToolRequest(
+                name=tool_name,
+                description=tool.description if tool else "",
+                args=tool_args,
+            )
 
             try:
                 approved = await approval.check_and_approve_tool(tool_request)
@@ -380,7 +380,7 @@ class OLSApprovalClient:
         query: str,
         history: Optional[list[BaseMessage]] = None,
         max_rounds: int = 3,
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Invoke the client and collect complete response.
 
         Args:
@@ -396,14 +396,15 @@ class OLSApprovalClient:
         tool_results = []
 
         async for chunk in self.generate_response(query, history, max_rounds):
-            if chunk.type == "text":
-                text_chunks.append(chunk.text)
-            elif chunk.type == "tool_call":
-                tool_calls.append(chunk.data)
-            elif chunk.type == "tool_result":
-                tool_results.append(chunk.data)
-            elif chunk.type == "end":
-                break
+            match chunk.type:
+                case "text":
+                    text_chunks.append(chunk.text)
+                case "tool_call":
+                    tool_calls.append(chunk.data)
+                case "tool_result":
+                    tool_results.append(chunk.data)
+                case "end":
+                    break
 
         return {
             "response": "".join(text_chunks),

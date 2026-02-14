@@ -8,8 +8,6 @@ This demonstrates integration with LangChain agents:
 4. Agent resumes with user's decision
 """
 
-from typing import Any
-
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain_core.runnables import RunnableConfig
@@ -28,8 +26,8 @@ from approvals import (
     ToolLevelApproval,
     ToolLevelApprovalConfig,
     ToolRequest,
-    default_cli_approval_handler,
 )
+from cli_handler import default_cli_approval_handler
 
 # ============================================================================
 # MCP Tool Discovery
@@ -174,7 +172,7 @@ async def invoke_with_approval(
     approval: BaseApproval,
     query: str,
     config: RunnableConfig,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Invoke agent and handle approval loop.
 
     Works with both ToolLevelApproval and CallLevelApproval.
