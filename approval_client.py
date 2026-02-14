@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MCP approval workflow using the approvals module.
+"""MCP approval workflow using the approvals' module.
 
 This demonstrates integration with LangChain agents:
 1. Agent discovers tools from MCP server

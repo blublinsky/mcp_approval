@@ -48,6 +48,7 @@ class ToolRequest(BaseModel):
     name: str = Field(min_length=1, description="Tool name")
     description: str = Field(default="", description="Tool description")
     args: ToolArgs = Field(default_factory=dict, description="Tool arguments")
+    client: str = Field(default=None, description="Client ID")
 
     @field_validator("name")
     @classmethod
@@ -152,7 +153,8 @@ class BaseApproval(ABC):
             bool: True if approved, False if rejected
         """
 
-    def contains_dangerous_words(self, text: str, dangerous_words: list[str]) -> bool:
+    @staticmethod
+    def contains_dangerous_words(text: str, dangerous_words: list[str]) -> bool:
         """Check if text contains any dangerous words (case-insensitive).
 
         Args:
@@ -186,8 +188,8 @@ class BaseApproval(ABC):
             logger.info("User rejected: %s", tool_request.name)
         return approved
 
+    @staticmethod
     async def call_approval_handler_with_timeout(
-        self,
         handler: Callable[[ToolRequest], bool],
         tool_request: ToolRequest,
         timeout_seconds: int,
@@ -377,7 +379,7 @@ async def call_with_timeout(
 ) -> T | None:
     """Call any async function with timeout.
 
-    Generic timeout wrapper for any async operation (tools, LLM, approvals, etc).
+    Generic timeout wrapper for any async operation (tools, LLM, approvals, etc.).
 
     Args:
         func: Async callable to execute
