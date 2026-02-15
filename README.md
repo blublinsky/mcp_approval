@@ -161,3 +161,8 @@ Test server with safe and dangerous tools for testing approval workflows.
 - ✅ **KISS**: Simple, focused, maintainable
 - ✅ **MCP Integration**: Works with any MCP server
 - ✅ **LangChain Compatible**: Uses HumanInTheLoopMiddleware
+
+## Additional reading
+
+- [Creating an Advanced AI Agent from Scratch with Python — Part 1](https://pub.towardsai.net/creating-an-advanced-ai-agent-from-scratch-with-python-in-2025-part-1-ce74a23f6514)
+- [Creating an Advanced AI Agent from Scratch with Python — Part 2](https://pub.towardsai.net/creating-an-advanced-ai-agent-from-scratch-with-python-in-2026-part-2-0f41c8d80bff)
