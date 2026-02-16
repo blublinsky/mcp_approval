@@ -1,3 +1,5 @@
+PYTHON := .venv/bin/python3
+
 .PHONY: help install verify server demo demo-ols clean
 
 help:
@@ -23,22 +25,22 @@ install:
 
 verify:
 	@echo "Verifying code format and quality..."
-	@. .venv/bin/activate && python -m black --check *.py || (echo "❌ Run 'black *.py' to fix formatting"; exit 1)
-	@. .venv/bin/activate && python -m ruff check *.py || (echo "❌ Run 'ruff check --fix *.py' to fix issues"; exit 1)
+	@$(PYTHON) -m black --check *.py || (echo "❌ Run 'black *.py' to fix formatting"; exit 1)
+	@$(PYTHON) -m ruff check *.py || (echo "❌ Run 'ruff check --fix *.py' to fix issues"; exit 1)
 	@echo "✓ All checks passed"
 
 server:
 	@echo "Starting MCP server on http://localhost:3000"
 	@echo "Press Ctrl+C to stop"
-	python3 mcp_server.py
+	$(PYTHON) mcp_server.py
 
 demo:
 	@echo "Running LangGraph demo (make sure server is running in another terminal)..."
-	python3 demo_approval_client.py
+	$(PYTHON) demo_approval_client.py
 
 demo-ols:
 	@echo "Running OLS-style demo (make sure server is running in another terminal)..."
-	python3 demo_ols_approval_client.py
+	$(PYTHON) demo_ols_approval_client.py
 
 clean:
 	@echo "Cleaning temporary files..."
